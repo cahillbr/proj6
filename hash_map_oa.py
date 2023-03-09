@@ -205,7 +205,7 @@ class HashMap:
             if entry is None:
                 # If the current bucket is empty, the key is not in the map
                 return None
-            elif entry.key == key:
+            elif entry.key == key and not entry.is_tombstone:
                 # If the current bucket has an entry with the same key, return its value
                 return entry.value
 
@@ -242,7 +242,7 @@ class HashMap:
                 return
             elif entry.key == key:
                 # If the current bucket has an entry with the same key, remove it
-                self._buckets[next_index] = None
+                entry.is_tombstone = True
                 self._size -= 1
                 return
 

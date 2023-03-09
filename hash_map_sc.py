@@ -137,6 +137,9 @@ class HashMap:
         if new_capacity < 1:
             return
 
+        if new_capacity < self._size:
+            new_capacity = 2 * self.get_size()
+
         if not self._is_prime(new_capacity):
             new_capacity = self._next_prime(new_capacity)
 
