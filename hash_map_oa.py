@@ -1,3 +1,10 @@
+# Name:
+# OSU Email:
+# Course: CS261 - Data Structures
+# Assignment:
+# Due Date:
+# Description:
+
 from a6_include import (DynamicArray, DynamicArrayException, HashEntry,
                         hash_function_1, hash_function_2)
 
@@ -218,10 +225,10 @@ class HashMap:
         """
         Removes the key-value pair with the given key from the hash map.
         """
-        # Compute the index of the bucket where the entry is located
+        # Compute the index of the bucket where the entry should be located
         index = self._hash_function(key) % self._capacity
 
-        # Iterate over the buckets using quadratic probing to find the entry
+        # Iterate over the buckets using quadratic probing to find the entry with the given key
         i = 0
         while i < self._capacity:
             # Compute the index of the next bucket to check
@@ -233,12 +240,9 @@ class HashMap:
             if entry is None:
                 # If the current bucket is empty, the entry is not in the hash map
                 return
-            elif entry.is_tombstone:
-                # If the current bucket has a tombstone, continue searching
-                pass
             elif entry.key == key:
-                # If the current bucket has an entry with the specified key, mark it as deleted
-                entry.is_tombstone = True
+                # If the current bucket has an entry with the same key, remove it
+                self._buckets[next_index] = None
                 self._size -= 1
                 return
 

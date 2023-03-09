@@ -1,3 +1,11 @@
+# Name:
+# OSU Email:
+# Course: CS261 - Data Structures
+# Assignment:
+# Due Date:
+# Description:
+
+
 from a6_include import (DynamicArray, LinkedList,
                         hash_function_1, hash_function_2)
 
@@ -84,6 +92,9 @@ class HashMap:
         """
         Adds a key-value pair to the hash map. Resizes the hash map if the load factor is greater than or equal to 1.0.
         """
+        if self.table_load() >= 1.0:
+            self.resize_table(2 * self.get_capacity())
+
         index = self._hash_function(key) % self.get_capacity()
 
         if self.contains_key(key):
@@ -92,10 +103,6 @@ class HashMap:
         else:
             self._buckets[index].insert(key, value)
             self._size += 1
-
-        if self.table_load() >= 1.0:
-            # print(f"At {self._size} and {self.get_capacity()}")
-            self.resize_table(2 * self.get_capacity())
 
     def empty_buckets(self) -> int:
         """
@@ -203,7 +210,14 @@ def find_mode(da: DynamicArray) -> (DynamicArray, int):
         else:
             map.put(da[i], 1)
 
-    return new, greatest
+    output = DynamicArray()
+    data = map.get_keys_and_values()
+    for i in range(data.length()):
+        k, v = data[i]
+        if v == greatest:
+            output.append(k)
+
+    return output, greatest
 
 
 # ------------------- BASIC TESTING ---------------------------------------- #
