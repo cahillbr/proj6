@@ -1,9 +1,9 @@
 # Name:
 # OSU Email:
-# Course: CS261 - Data Structures
-# Assignment:
+# Course: CS261 -
+# Assignment: Assignment 6 -
 # Due Date:
-# Description:
+# Description
 
 
 from a6_include import (DynamicArray, LinkedList,
@@ -11,21 +11,17 @@ from a6_include import (DynamicArray, LinkedList,
 
 
 class HashMap:
-    def __init__(self,
-                 capacity: int = 11,
-                 function: callable = hash_function_1) -> None:
+    def __init__(self, capacity: int, function) -> None:
         """
         Initialize new HashMap that uses
         separate chaining for collision resolution
         DO NOT CHANGE THIS METHOD IN ANY WAY
         """
         self._buckets = DynamicArray()
-
-        # capacity must be a prime number
-        self._capacity = self._next_prime(capacity)
-        for _ in range(self._capacity):
+        for _ in range(capacity):
             self._buckets.append(LinkedList())
 
+        self._capacity = capacity
         self._hash_function = function
         self._size = 0
 
@@ -38,39 +34,6 @@ class HashMap:
         for i in range(self._buckets.length()):
             out += str(i) + ': ' + str(self._buckets[i]) + '\n'
         return out
-
-    def _next_prime(self, capacity: int) -> int:
-        """
-        Increment from given number and the find the closest prime number
-        DO NOT CHANGE THIS METHOD IN ANY WAY
-        """
-        if capacity % 2 == 0:
-            capacity += 1
-
-        while not self._is_prime(capacity):
-            capacity += 2
-
-        return capacity
-
-    @staticmethod
-    def _is_prime(capacity: int) -> bool:
-        """
-        Determine if given integer is a prime number and return boolean
-        DO NOT CHANGE THIS METHOD IN ANY WAY
-        """
-        if capacity == 2 or capacity == 3:
-            return True
-
-        if capacity == 1 or capacity % 2 == 0:
-            return False
-
-        factor = 3
-        while factor ** 2 <= capacity:
-            if capacity % factor == 0:
-                return False
-            factor += 2
-
-        return True
 
     def get_size(self) -> int:
         """
@@ -90,140 +53,206 @@ class HashMap:
 
     def put(self, key: str, value: object) -> None:
         """
-        Adds a key-value pair to the hash map. Resizes the hash map if the load factor is greater than or equal to 1.0.
+        Takes as parameters a key and a value. Performs hash function with key and determines index. If the key already
+        exists it is replaced by the new key-value pair. Otherwise, the key-value pair is added.
         """
-        if self.table_load() >= 1.0:
-            self.resize_table(2 * self.get_capacity())
 
-        index = self._hash_function(key) % self.get_capacity()
+        hash = self._hash_function(key)
+        index = hash % self._capacity
+        da = self._buckets
+        cur_ll = da.get_at_index(index)
 
-        if self.contains_key(key):
-            node = self._buckets[index].contains(key)
-            node.value = value
+        if cur_ll.contains(key):
+            cur_ll.remove(key)
+            cur_ll.insert(key, value)
         else:
-            self._buckets[index].insert(key, value)
+            cur_ll.insert(key, value)
             self._size += 1
 
     def empty_buckets(self) -> int:
         """
-        Returns the number of empty buckets in the hash map.
+        Takes no parameters. Counts and returns the number of empty indices in the dynamic array.
         """
-        count = 0
-        for i in range(self._buckets.length()):
-            if self._buckets[i].length() == 0:
-                count += 1
+        loop_counter = 0
+        bucket_counter = 0
+        da = self._buckets
+        while loop_counter < self._capacity:
+            cur_ll = da.get_at_index(loop_counter)
+            if cur_ll.length() == 0:
+                bucket_counter += 1
 
-        return count
+            loop_counter += 1
+
+        return bucket_counter
 
     def table_load(self) -> float:
         """
-        Returns the HashMap's load factor
+        Takes no parameters. Calculates and returns the load factor for the table.
         """
-        return self.get_size() / self.get_capacity()
+        loop_counter = 0
+        node_counter = 0
+        da = self._buckets
+
+        while loop_counter < self._capacity:
+            cur_ll = da.get_at_index(loop_counter)
+            node_counter += cur_ll.length()
+            loop_counter += 1
+
+        load_factor = node_counter/self._capacity
+        return load_factor
 
     def clear(self) -> None:
         """
-        Removes all key-value pairs from the hash map.
+        Takes no parameters. Clears the table.
         """
-        for i in range(self._buckets.length()):
-            self._buckets[i] = LinkedList()
-
+        new_hm = HashMap(self._capacity, self._hash_function)
+        new_da = new_hm._buckets
+        self._buckets = new_da
         self._size = 0
 
     def resize_table(self, new_capacity: int) -> None:
         """
-        Resizes the HashTable
+        Takes as a parameter the new capacity for the dynamic array. Resizes the array to the new capacity and rehashes
+        and transfers the pre-existing data into the new array. Assigns the new array to the current hash table and
+        updates the capacity.
         """
         if new_capacity < 1:
             return
 
-        if new_capacity < self._size:
-            new_capacity = 2 * self.get_size()
+        old_cap = self._capacity
+        da_counter = 0
+        ll_counter = 0
+        da = self._buckets
+        new_hm = HashMap(new_capacity, self._hash_function)
+        new_da = new_hm._buckets
 
-        if not self._is_prime(new_capacity):
-            new_capacity = self._next_prime(new_capacity)
+        while da_counter < old_cap:
+            cur_ll = da.get_at_index(da_counter)
+            ll_iter = cur_ll.__iter__()
+            while ll_counter < cur_ll.length():
+                cur_node = ll_iter.__next__()
+                cur_key = cur_node.key
+                cur_val = cur_node.value
+                #hash = self._hash_function(cur_key)
+                #index = hash % new_capacity
+                new_hm.put(cur_key, cur_val)
+                ll_counter += 1
 
-        keys_and_values = self.get_keys_and_values()
-        if keys_and_values is None:
-            return
-
-        self.clear()
-        for i in range(self._capacity, new_capacity):
-            self._buckets.append(LinkedList())
+            ll_counter = 0
+            da_counter += 1
 
         self._capacity = new_capacity
+        self._buckets = new_da
 
-        for i in range(keys_and_values.length()):
-            k, v = keys_and_values[i]
-            index = self._hash_function(k) % self.get_capacity()
-            self._buckets[index].insert(k, v)
-            self._size += 1
+    def get(self, key: str) -> object:
+        """
+        Takes as a parameter a key. Searches the linked list at the appropriate index for the key. If the key is there,
+        returns the value of the node. Otherwise, returns None.
+        """
+        hash = self._hash_function(key)
+        index = hash % self._capacity
+        da = self._buckets
+        counter = 0
 
-    def get(self, key: str):
-        """
-        Returns the value associated with the given key, or None if the key is not in the map.
-        """
-        index = self._hash_function(key) % self.get_capacity()
-        node = self._buckets[index].contains(key)
-        return node.value if node else None
+        cur_ll = da.get_at_index(index)
+        if cur_ll.contains(key) is not None:
+            ll_iter = cur_ll.__iter__()
+            while counter < cur_ll.length():
+                cur_node = ll_iter.__next__()
+                if cur_node.key == key:
+                    return cur_node.value
+
+        return None
 
     def contains_key(self, key: str) -> bool:
         """
-        Returns True if the given key is in the hash map, False otherwise.
+        Takes a key as a parameter. Searches the table for the key. If the key exists in the table, returns True.
+        Otherwise, returns False.
         """
-        return self.get(key) != None
+        hash = self._hash_function(key)
+        index = hash % self._capacity
+
+        cur_ll = self._buckets.get_at_index(index)
+        cur_node = cur_ll.contains(key)
+        if cur_node is not None:
+            return True
+        else:
+            return False
 
     def remove(self, key: str) -> None:
         """
-        Removes the key-value pair with the given key from the hash map.
+        Takes as a parameter a key. Searches table for key and removes the node if it exists.
         """
-        if not self.contains_key(key):
-            return
+        hash = self._hash_function(key)
+        index = hash % self._capacity
 
-        index = self._hash_function(key) % self.get_capacity()
-        self._buckets[index].remove(key)
-        self._size -= 1
+        cur_ll = self._buckets.get_at_index(index)
+        if cur_ll.remove(key) is True:
+            self._size -= 1
 
-    def get_keys_and_values(self) -> DynamicArray:
+    def get_keys(self) -> DynamicArray:
         """
-        Returns a dynamic array containing all key-value pairs in the hash map.
+        Takes no parameters. Iterates through hash map and adds keys to new dynamic array, Returns the new dynamic array
+        containing all the keys in the hash map.
         """
-        da = DynamicArray()
-        for i in range(self._buckets.length()):
-            lst = self._buckets[i]
-            if lst.length() > 0:
-                for node in lst:
-                    da.append((node.key, node.value))
+        new_da = DynamicArray()
+        da = self._buckets
+        da_counter = 0
+        ll_counter = 0
 
-        return da
+        while da_counter < self._capacity:
+            cur_ll = da.get_at_index(da_counter)
+            ll_iter = cur_ll.__iter__()
+
+            while ll_counter < cur_ll.length():
+                cur_node = ll_iter.__next__()
+                cur_key = cur_node.key
+                new_da.append(cur_key)
+                ll_counter += 1
+
+            ll_counter = 0
+            da_counter += 1
+
+        return new_da
 
 
 def find_mode(da: DynamicArray) -> (DynamicArray, int):
     """
-    Finds the mode
+    Takes as a parameter a dynamic array of strings. Moves strings into hash map as keys with their frequencies as
+    values and calculates max_val. Builds new DA with all keys whose values matches max_val. Returns a tuple with mode and frequency.
     """
     # if you'd like to use a hash map,
     # use this instance of your Separate Chaining HashMap
-    map = HashMap()
-    new = da[0]
-    greatest = 1
-    for i in range(da.length()):
-        if map.contains_key(da[i]):
-            map.put(da[i], map.get(da[i]) + 1)
-            if map.get(da[i]) > greatest:
-                new = da[i]
-                greatest = map.get(da[i])
+    map = HashMap(da.length() // 3, hash_function_1)
+    max_val = 0
+    counter = 0
+
+    while counter < da.length():
+        key = da.get_at_index(counter)
+        if map.contains_key(key):
+            value = map.get(key)
+            value += 1
+            map.put(key, value)
+            if value > max_val:
+                max_val = value
         else:
-            map.put(da[i], 1)
+            value = 1
+            map.put(key, value)
+            if value > max_val:
+                max_val = value
+        counter += 1
 
-    output = DynamicArray()
-    data = map.get_keys_and_values()
-    for i in range(data.length()):
-        k, v = data[i]
-        if v == greatest:
-            output.append(k)
+    map_keys = map.get_keys()
+    result_da = DynamicArray()
+    counter = 0
+    while counter < map_keys.length():
+        key = map_keys.get_at_index(counter)
+        cur_val = map.get(key)
+        if cur_val == max_val:
+            result_da.append(key)
+        counter += 1
 
-    return output, greatest
+    return result_da, max_val
 
 
 # ------------------- BASIC TESTING ---------------------------------------- #
@@ -236,7 +265,7 @@ if __name__ == "__main__":
     for i in range(150):
         m.put('str' + str(i), i * 100)
         if i % 25 == 24:
-            print(m.empty_buckets(), round(m.table_load(), 2), m.get_size(), m.get_capacity())
+            print(m.empty_buckets(), m.table_load(), m.get_size(), m.get_capacity())
 
     print("\nPDF - put example 2")
     print("-------------------")
@@ -244,7 +273,7 @@ if __name__ == "__main__":
     for i in range(50):
         m.put('str' + str(i // 3), i * 100)
         if i % 10 == 9:
-            print(m.empty_buckets(), round(m.table_load(), 2), m.get_size(), m.get_capacity())
+            print(m.empty_buckets(), m.table_load(), m.get_size(), m.get_capacity())
 
     print("\nPDF - empty_buckets example 1")
     print("-----------------------------")
@@ -270,13 +299,13 @@ if __name__ == "__main__":
     print("\nPDF - table_load example 1")
     print("--------------------------")
     m = HashMap(101, hash_function_1)
-    print(round(m.table_load(), 2))
+    print(round(m.table_load()),2)
     m.put('key1', 10)
-    print(round(m.table_load(), 2))
+    print(round(m.table_load()), 2)
     m.put('key2', 20)
-    print(round(m.table_load(), 2))
+    print(round(m.table_load()), 2)
     m.put('key1', 30)
-    print(round(m.table_load(), 2))
+    print(round(m.table_load()), 2)
 
     print("\nPDF - table_load example 2")
     print("--------------------------")
@@ -284,7 +313,7 @@ if __name__ == "__main__":
     for i in range(50):
         m.put('key' + str(i), i * 100)
         if i % 10 == 0:
-            print(round(m.table_load(), 2), m.get_size(), m.get_capacity())
+            print((round(m.table_load(),2), m.get_size(), m.get_capacity()))
 
     print("\nPDF - clear example 1")
     print("---------------------")
@@ -299,7 +328,7 @@ if __name__ == "__main__":
 
     print("\nPDF - clear example 2")
     print("---------------------")
-    m = HashMap(53, hash_function_1)
+    m = HashMap(53  , hash_function_1)
     print(m.get_size(), m.get_capacity())
     m.put('key1', 10)
     print(m.get_size(), m.get_capacity())
@@ -312,7 +341,7 @@ if __name__ == "__main__":
 
     print("\nPDF - resize example 1")
     print("----------------------")
-    m = HashMap(23, hash_function_1)
+    m = HashMap(20, hash_function_1)
     m.put('key1', 10)
     print(m.get_size(), m.get_capacity(), m.get('key1'), m.contains_key('key1'))
     m.resize_table(30)
@@ -320,24 +349,6 @@ if __name__ == "__main__":
 
     print("\nPDF - resize example 2")
     print("----------------------")
-    # hash_map = HashMap()
-    # hash_map.put("key524", 299)
-    # hash_map.put("key309", -976)
-    # hash_map.put("key86", -489)
-    # hash_map.put("key417", -767)
-    # hash_map.put("key651", 352)
-    # hash_map.put("key184", -678)
-    # hash_map.put("key383", -930)
-    # hash_map.put("key914", 250)
-    # hash_map.put("key457", -744)
-    # hash_map.put("key669", 979)
-    # hash_map.put("key10", 396)
-    # hash_map.put("key959", 150)
-    # hash_map.put("key788", -274)
-    # hash_map.put("key601", 26)
-    # hash_map.put("key801", 886)
-    # hash_map.put("key999", -466)
-    # hash_map.resize_table(17)
     m = HashMap(79, hash_function_2)
     keys = [i for i in range(1, 1000, 13)]
     for key in keys:
@@ -414,33 +425,50 @@ if __name__ == "__main__":
     print(m.get('key1'))
     m.remove('key4')
 
-    print("\nPDF - get_keys_and_values example 1")
+    print("\nPDF - get_keys example 1")
     print("------------------------")
     m = HashMap(11, hash_function_2)
-    for i in range(1, 6):
+    for i in range(1,6):
         m.put(str(i), str(i * 10))
-    print(m.get_keys_and_values())
+    print(m.get_keys())
 
-    m.put('20', '200')
-    m.remove('1')
+    m.resize_table(1)
+    print(m.get_keys())
+
+    m.put('200', '2000')
+    m.remove('100')
     m.resize_table(2)
-    print(m.get_keys_and_values())
+    print(m.get_keys())
 
     print("\nPDF - find_mode example 1")
     print("-----------------------------")
-    da = DynamicArray(["apple", "apple", "grape", "melon", "peach"])
+    da = DynamicArray(["apple", "apple", "grape", "melon", "melon", "peach"])
+    map = HashMap(da.length() // 3, hash_function_1)
     mode, frequency = find_mode(da)
-    print(f"Input: {da}\nMode : {mode}, Frequency: {frequency}")
+    print(f"Input: {da}\nMode: {mode}, Frequency: {frequency}")
 
     print("\nPDF - find_mode example 2")
     print("-----------------------------")
     test_cases = (
-        ["Arch", "Manjaro", "Manjaro", "Mint", "Mint", "Mint", "Ubuntu", "Ubuntu", "Ubuntu"],
+        ["Arch", "Manjaro", "Manjaro", "Mint", "Mint", "Mint", "Ubuntu", "Ubuntu", "Ubuntu", "Ubuntu"],
         ["one", "two", "three", "four", "five"],
         ["2", "4", "2", "6", "8", "4", "1", "3", "4", "5", "7", "3", "3", "2"]
     )
 
     for case in test_cases:
         da = DynamicArray(case)
+        map = HashMap(da.length() // 3, hash_function_2)
         mode, frequency = find_mode(da)
-        print(f"Input: {da}\nMode : {mode}, Frequency: {frequency}\n")
+        print(f"Input: {da}\nMode: {mode}, Frequency: {frequency}\n")
+
+        test_cases = (
+            ["Arch", "Manjaro", "Manjaro", "Mint", "Mint", "Mint", "Ubuntu",
+            "Ubuntu", "Ubuntu"],
+            ["one", "two", "three", "four", "five"],
+            ["2", "4", "2", "6", "8", "4", "1", "3", "4", "5", "7", "3", "3", "2"]
+            )
+
+        for case in test_cases:
+             da = DynamicArray(case)
+             mode, frequency = find_mode(da)
+             print(f"{da}\nMode : {mode}, Frequency: {frequency}\n")

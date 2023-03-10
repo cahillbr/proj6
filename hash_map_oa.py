@@ -1,11 +1,12 @@
 # Name:
 # OSU Email:
-# Course: CS261 - Data Structures
+# Course: CS261
 # Assignment:
 # Due Date:
 # Description:
 
-from a6_include import (DynamicArray, DynamicArrayException, HashEntry,
+
+from a6_include import (DynamicArray, HashEntry,
                         hash_function_1, hash_function_2)
 
 
@@ -17,12 +18,10 @@ class HashMap:
         DO NOT CHANGE THIS METHOD IN ANY WAY
         """
         self._buckets = DynamicArray()
-
-        # capacity must be a prime number
-        self._capacity = self._next_prime(capacity)
-        for _ in range(self._capacity):
+        for _ in range(capacity):
             self._buckets.append(None)
 
+        self._capacity = capacity
         self._hash_function = function
         self._size = 0
 
@@ -35,39 +34,6 @@ class HashMap:
         for i in range(self._buckets.length()):
             out += str(i) + ': ' + str(self._buckets[i]) + '\n'
         return out
-
-    def _next_prime(self, capacity: int) -> int:
-        """
-        Increment from given number to find the closest prime number
-        DO NOT CHANGE THIS METHOD IN ANY WAY
-        """
-        if capacity % 2 == 0:
-            capacity += 1
-
-        while not self._is_prime(capacity):
-            capacity += 2
-
-        return capacity
-
-    @staticmethod
-    def _is_prime(capacity: int) -> bool:
-        """
-        Determine if given integer is a prime number and return boolean
-        DO NOT CHANGE THIS METHOD IN ANY WAY
-        """
-        if capacity == 2 or capacity == 3:
-            return True
-
-        if capacity == 1 or capacity % 2 == 0:
-            return False
-
-        factor = 3
-        while factor ** 2 <= capacity:
-            if capacity % factor == 0:
-                return False
-            factor += 2
-
-        return True
 
     def get_size(self) -> int:
         """
@@ -87,200 +53,199 @@ class HashMap:
 
     def put(self, key: str, value: object) -> None:
         """
-        Adds a key-value pair to the hash map. Resizes the hash map if the load factor is greater than or equal to 0.5.
+        Takes as parameters a key and a value. Performs hash function with key and determines index. If the key already
+        exists it is replaced by the new key-value pair. If the index is already filled with another key, quadratic
+        probing will be used until either the key matches the key of an entry, in which case it will be updated with
+        the new value, or until an empty index is found, in which case the new key-value pair is added as a hash entry.
         """
-        # Check if the load factor is greater than or equal to 0.5
+        # remember, if the load factor is greater than or equal to 0.5,
+        # resize the table before putting the new key/value pair
         if self.table_load() >= 0.5:
-            # Double the capacity of the hash map
             self.resize_table(self._capacity * 2)
+        da = self._buckets
+        hash = self._hash_function(key)
+        index = hash % self._capacity
 
-        # Compute the index of the bucket where the entry should be inserted
-        index = self._hash_function(key) % self._capacity
+        if da.get_at_index(index) is None or da.get_at_index(index).is_tombstone is True:
+            da.set_at_index(index, HashEntry(key, value))
+            self._size += 1
+        else:
+            if da.get_at_index(index).key == key:
+                da.get_at_index(index).value = value
+            else:
+                probe = 1
+                new_index = (index + probe**2) % self._capacity
+                while da.get_at_index(new_index) is not None and da.get_at_index(new_index).is_tombstone is False:
+                    if da.get_at_index(new_index).key == key:
+                        da.get_at_index(new_index).value = value
+                        return
+                    else:
+                        probe += 1
+                        new_index = (index + probe**2) % self._capacity
 
-        # Iterate over the buckets using quadratic probing to find an empty slot
-        i = 0
-        while i < self._capacity:
-            # Compute the index of the next bucket to check
-            next_index = (index + i**2) % self._capacity
-
-            # Get the entry at the current bucket
-            entry = self._buckets[next_index]
-
-            if entry is None or entry.is_tombstone:
-                # If the current bucket is empty or has a deleted entry, insert the new entry
-                self._buckets[next_index] = HashEntry(key, value)
+                da.set_at_index(new_index, HashEntry(key, value))
                 self._size += 1
-                return
-            elif entry.key == key:
-                # If the current bucket has an entry with the same key, update its value
-                entry.value = value
-                return
-
-            i += 1
-
-        # If we have iterated over all the buckets without finding an empty slot,
-        # we need to resize the hash map
-        self.resize_table(self._capacity * 2)
-
-        # Insert the new entry
-        index = self._hash_function(key) % self._capacity
-        i = 0
-        while i < self._capacity:
-            next_index = (index + i**2) % self._capacity
-            entry = self._buckets[next_index]
-            if entry is None or entry.is_tombstone:
-                self._buckets[next_index] = HashEntry(key, value)
-                self._size += 1
-                return
-            i += 1
 
     def table_load(self) -> float:
         """
-        Returns the HashMap's load factor
+        Takes no parameters. Calculates and returns the load factor for the table.
         """
-        return self.get_size() / self.get_capacity()
+        da = self._buckets
+        loop_counter = 0
+        element_counter = 0
+
+        while loop_counter < da.length():
+            if da.get_at_index(loop_counter) is not None and da.get_at_index(loop_counter).is_tombstone is False:
+                element_counter += 1
+            loop_counter += 1
+
+        load_factor = element_counter/self._capacity
+        return load_factor
 
     def empty_buckets(self) -> int:
         """
-        Returns the number of empty buckets in the hash map.
+        Takes no parameters. Counts and returns the number of empty indices in the dynamic array.
         """
-        count = 0
-        for i in range(self._capacity):
-            if self._buckets[i] is None or self._buckets[i].is_tombstone:
-                count += 1
-        return count
+        loop_counter = 0
+        bucket_counter = 0
+        da = self._buckets
+
+        while loop_counter < da.length():
+            if da.get_at_index(loop_counter) is None or da.get_at_index(loop_counter).is_tombstone == True:
+                bucket_counter += 1
+            loop_counter += 1
+
+        return bucket_counter
 
     def resize_table(self, new_capacity: int) -> None:
         """
-        Resize the hash map to the new_capacity
+        Takes as a parameter the new capacity for the dynamic array. Resizes the array to the new capacity and rehashes
+        and transfers the pre-existing data into the new array. Assigns the new array to the current hash table and
+        updates the capacity.
         """
-        if new_capacity < self.get_size():
+        # remember to rehash non-deleted entries into new table
+        if new_capacity < 1:
             return
 
-        if not self._is_prime(new_capacity):
-            new_capacity = self._next_prime(new_capacity)
-
-        new_buckets = DynamicArray()
-        for _ in range(new_capacity):
-            new_buckets.append(None)
-
-        for i in range(self._buckets.length()):
-            entry = self._buckets[i]
-            if entry and not entry.is_tombstone:
-                hash_value = self._hash_function(entry.key) % new_capacity
-                if not new_buckets[hash_value]:
-                    new_buckets[hash_value] = entry
-                else:
-                    # quadratic probing to find new index
-                    j = 1
-                    while True:
-                        new_index = (hash_value + j * j) % new_capacity
-                        if not new_buckets[new_index]:
-                            new_buckets[new_index] = entry
-                            break
-                        j += 1
-
+        old_da = self._buckets
+        old_cap = self._capacity
+        new_hm = HashMap(new_capacity, self._hash_function)
+        new_da = new_hm._buckets
         self._capacity = new_capacity
-        self._buckets = new_buckets
+        self._buckets = new_da
+        self._size = 0
+        counter = 0
 
-        if self.table_load() >= 0.5:
-            self.resize_table(2 * self._capacity)
+        while counter < old_cap:
+            hash_entry = old_da.get_at_index(counter)
+            if hash_entry is not None and hash_entry.is_tombstone is False:
+                key = hash_entry.key
+                value = hash_entry.value
+                self.put(key, value)
+            counter += 1
 
     def get(self, key: str) -> object:
         """
-        Returns the value associated with the given key in the hash map, or None if the key is not in the hash map.
+        Takes as a parameter a key. Searches at the hashed index, then at the indices determined by quadratic probing
+        for the key. If the key is found, returns the value of the hash entry. Otherwise, returns None.
         """
-        # Compute the index of the bucket where the entry with the given key should be located
-        index = self._hash_function(key) % self._capacity
+        da = self._buckets
+        hash = self._hash_function(key)
+        index = hash % self._capacity
+        if da.get_at_index(index) is None:
+            return None
+        else:
+            if da.get_at_index(index).key == key and da.get_at_index(index).is_tombstone is False:
+                return da.get_at_index(index).value
+            else:
+                probe = 1
+                new_index = (index + probe**2) % self._capacity
+                while da.get_at_index(new_index) is not None:
+                    if da.get_at_index(new_index).is_tombstone is False:
+                        if da.get_at_index(new_index).key == key:
+                            return da.get_at_index(new_index).value
+                    probe += 1
+                    new_index = (index + probe**2) % self._capacity
 
-        # Iterate over the buckets using quadratic probing to find the entry with the given key
-        i = 0
-        while i < self._capacity:
-            # Compute the index of the next bucket to check
-            next_index = (index + i**2) % self._capacity
-
-            # Get the entry at the current bucket
-            entry = self._buckets[next_index]
-
-            if entry is None:
-                # If the current bucket is empty, the key is not in the map
                 return None
-            elif entry.key == key and not entry.is_tombstone:
-                # If the current bucket has an entry with the same key, return its value
-                return entry.value
-
-            i += 1
-
-        # If we have iterated over all the buckets without finding the entry with the given key,
-        # the key is not in the map
-        return None
-
 
     def contains_key(self, key: str) -> bool:
         """
-        Returns True if the given key is in the hash map, False otherwise.
+        Takes a key as a parameter. Searches the table for the key. If the key exists in the table, returns True.
+        Otherwise, returns False.
         """
-        return self.get(key) != None
+        da = self._buckets
+        hash = self._hash_function(key)
+        index = hash % self._capacity
+        if da.get_at_index(index) is None:
+            return False
+        else:
+            if da.get_at_index(index).key == key and da.get_at_index(index).is_tombstone is False:
+                return True
+            else:
+                probe = 1
+                new_index = (index + probe ** 2) % self._capacity
+                while da.get_at_index(new_index) is not None:
+                    if da.get_at_index(new_index).is_tombstone is False:
+                        if da.get_at_index(new_index).key == key:
+                            return True
+                    probe += 1
+                    new_index = (index + probe ** 2) % self._capacity
+
+                return False
 
     def remove(self, key: str) -> None:
         """
-        Removes the key-value pair with the given key from the hash map.
+        Takes as a parameter a key. Searches table for key and removes the hash entry if it exists.
         """
-        # Compute the index of the bucket where the entry should be located
-        index = self._hash_function(key) % self._capacity
+        da = self._buckets
+        hash = self._hash_function(key)
+        index = hash % self._capacity
 
-        # Iterate over the buckets using quadratic probing to find the entry with the given key
-        i = 0
-        while i < self._capacity:
-            # Compute the index of the next bucket to check
-            next_index = (index + i ** 2) % self._capacity
-
-            # Get the entry at the current bucket
-            entry = self._buckets[next_index]
-
-            if entry is None:
-                # If the current bucket is empty, the entry is not in the hash map
-                return
-            elif entry.key == key:
-                # If the current bucket has an entry with the same key, remove it
-                entry.is_tombstone = True
+        if da.get_at_index(index) is None:
+            return
+        else:
+            if da.get_at_index(index).key == key and da.get_at_index(index).is_tombstone is False:
+                da.get_at_index(index).is_tombstone = True
                 self._size -= 1
-
-                # Reset the tombstone flags of entries that were moved during probing
-                j = i + 1
-                while True:
-                    next_next_index = (index + j ** 2) % self._capacity
-                    next_entry = self._buckets[next_next_index]
-                    if next_entry is None or j == self._capacity:
-                        break
-                    elif not next_entry.is_tombstone and self._hash_function(next_entry.key) % self._capacity <= i:
-                        next_entry.is_tombstone = True
-                        self._size -= 1
-
-                    j += 1
-
                 return
-
-            i += 1
+            else:
+                probe = 1
+                new_index = (index + probe ** 2) % self._capacity
+                while da.get_at_index(new_index) is not None:
+                    if da.get_at_index(new_index).is_tombstone is False:
+                        if da.get_at_index(new_index).key == key:
+                            da.get_at_index(new_index).is_tombstone = True
+                            self._size -= 1
+                            return
+                    probe += 1
+                    new_index = (index + probe ** 2) % self._capacity
 
     def clear(self) -> None:
         """
-        Removes all key-value pairs from the hash map.
+        Takes no parameters. Clears the table.
         """
-        self._buckets = DynamicArray()
-        for _ in range(self._capacity):
-            self._buckets.append(None)
+        new_hm = HashMap(self._capacity, self._hash_function)
+        new_da = new_hm._buckets
+        self._buckets = new_da
         self._size = 0
 
     def get_keys_and_values(self) -> DynamicArray:
         """
-        Returns a DynamicArray that contains all key-value pairs stored in the hash map.
+        Takes no parameters. Iterates through hash map and adds keys to new dynamic array, Returns the new dynamic array
+        containing all the keys in the hash map.
         """
-        da = DynamicArray()
-        for entry in self:
-            da.append((entry.key, entry.value))
+        new_da = DynamicArray()
+        da = self._buckets
+        loop_counter = 0
 
-        return da
+        while loop_counter < self._capacity:
+            if da.get_at_index(loop_counter) is not None and da.get_at_index(loop_counter).is_tombstone is False:
+                key = da.get_at_index(loop_counter).key
+                new_da.append(key)
+            loop_counter += 1
+
+        return new_da
 
     def __iter__(self):
         """
@@ -307,7 +272,6 @@ class HashMap:
 
         self._next_index = None
         raise StopIteration
-
 
 # ------------------- BASIC TESTING ---------------------------------------- #
 
@@ -517,3 +481,4 @@ if __name__ == "__main__":
     print(m)
     for item in m:
         print('K:', item.key, 'V:', item.value)
+
