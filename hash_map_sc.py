@@ -144,6 +144,9 @@ class HashMap:
             new_capacity = self._next_prime(new_capacity)
 
         keys_and_values = self.get_keys_and_values()
+        if keys_and_values is None:
+            return
+
         self.clear()
         for i in range(self._capacity, new_capacity):
             self._buckets.append(LinkedList())
@@ -183,13 +186,13 @@ class HashMap:
 
     def get_keys_and_values(self) -> DynamicArray:
         """
-        Removes all key-value pairs from the hash map.
+        Returns a dynamic array containing all key-value pairs in the hash map.
         """
         da = DynamicArray()
         for i in range(self._buckets.length()):
-            list = self._buckets[i]
-            if list.length() > 0:
-                for node in list:
+            lst = self._buckets[i]
+            if lst.length() > 0:
+                for node in lst:
                     da.append((node.key, node.value))
 
         return da
@@ -317,6 +320,24 @@ if __name__ == "__main__":
 
     print("\nPDF - resize example 2")
     print("----------------------")
+    # hash_map = HashMap()
+    # hash_map.put("key524", 299)
+    # hash_map.put("key309", -976)
+    # hash_map.put("key86", -489)
+    # hash_map.put("key417", -767)
+    # hash_map.put("key651", 352)
+    # hash_map.put("key184", -678)
+    # hash_map.put("key383", -930)
+    # hash_map.put("key914", 250)
+    # hash_map.put("key457", -744)
+    # hash_map.put("key669", 979)
+    # hash_map.put("key10", 396)
+    # hash_map.put("key959", 150)
+    # hash_map.put("key788", -274)
+    # hash_map.put("key601", 26)
+    # hash_map.put("key801", 886)
+    # hash_map.put("key999", -466)
+    # hash_map.resize_table(17)
     m = HashMap(79, hash_function_2)
     keys = [i for i in range(1, 1000, 13)]
     for key in keys:

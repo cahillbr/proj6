@@ -101,7 +101,7 @@ class HashMap:
         i = 0
         while i < self._capacity:
             # Compute the index of the next bucket to check
-            next_index = (index + i ** 2) % self._capacity
+            next_index = (index + i**2) % self._capacity
 
             # Get the entry at the current bucket
             entry = self._buckets[next_index]
@@ -126,7 +126,7 @@ class HashMap:
         index = self._hash_function(key) % self._capacity
         i = 0
         while i < self._capacity:
-            next_index = (index + i ** 2) % self._capacity
+            next_index = (index + i**2) % self._capacity
             entry = self._buckets[next_index]
             if entry is None or entry.is_tombstone:
                 self._buckets[next_index] = HashEntry(key, value)
@@ -172,13 +172,13 @@ class HashMap:
                     new_buckets[hash_value] = entry
                 else:
                     # quadratic probing to find new index
-                    i = 1
+                    j = 1
                     while True:
-                        new_index = (hash_value + i * i) % new_capacity
+                        new_index = (hash_value + j * j) % new_capacity
                         if not new_buckets[new_index]:
                             new_buckets[new_index] = entry
                             break
-                        i += 1
+                        j += 1
 
         self._capacity = new_capacity
         self._buckets = new_buckets
@@ -197,7 +197,7 @@ class HashMap:
         i = 0
         while i < self._capacity:
             # Compute the index of the next bucket to check
-            next_index = (index + i ** 2) % self._capacity
+            next_index = (index + i**2) % self._capacity
 
             # Get the entry at the current bucket
             entry = self._buckets[next_index]
@@ -214,6 +214,7 @@ class HashMap:
         # If we have iterated over all the buckets without finding the entry with the given key,
         # the key is not in the map
         return None
+
 
     def contains_key(self, key: str) -> bool:
         """
@@ -244,6 +245,20 @@ class HashMap:
                 # If the current bucket has an entry with the same key, remove it
                 entry.is_tombstone = True
                 self._size -= 1
+
+                # Reset the tombstone flags of entries that were moved during probing
+                j = i + 1
+                while True:
+                    next_next_index = (index + j ** 2) % self._capacity
+                    next_entry = self._buckets[next_next_index]
+                    if next_entry is None or j == self._capacity:
+                        break
+                    elif not next_entry.is_tombstone and self._hash_function(next_entry.key) % self._capacity <= i:
+                        next_entry.is_tombstone = True
+                        self._size -= 1
+
+                    j += 1
+
                 return
 
             i += 1
