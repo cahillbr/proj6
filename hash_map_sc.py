@@ -5,15 +5,18 @@
 # Due Date:
 # Description:
 
-from a6_include import (DynamicArray, DynamicArrayException, HashEntry,
+
+from a6_include import (DynamicArray, LinkedList,
                         hash_function_1, hash_function_2)
 
 
 class HashMap:
-    def __init__(self, capacity: int, function) -> None:
+    def __init__(self,
+                 capacity: int = 11,
+                 function: callable = hash_function_1) -> None:
         """
         Initialize new HashMap that uses
-        quadratic probing for collision resolution
+        separate chaining for collision resolution
         DO NOT CHANGE THIS METHOD IN ANY WAY
         """
         self._buckets = DynamicArray()
@@ -21,7 +24,7 @@ class HashMap:
         # capacity must be a prime number
         self._capacity = self._next_prime(capacity)
         for _ in range(self._capacity):
-            self._buckets.append(None)
+            self._buckets.append(LinkedList())
 
         self._hash_function = function
         self._size = 0
@@ -38,7 +41,7 @@ class HashMap:
 
     def _next_prime(self, capacity: int) -> int:
         """
-        Increment from given number to find the closest prime number
+        Increment from given number and the find the closest prime number
         DO NOT CHANGE THIS METHOD IN ANY WAY
         """
         if capacity % 2 == 0:
