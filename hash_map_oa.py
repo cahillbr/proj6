@@ -90,7 +90,7 @@ class HashMap:
         Adds a key-value pair to the hash map. Resizes the hash map if the load factor is greater than or equal to 0.5.
         """
         # Check if the load factor is greater than or equal to 0.5
-        if self.table_load() >= 0.9:
+        if self.table_load() >= 0.5:
             # Double the capacity of the hash map
             self.resize_table(self._capacity * 2)
 
@@ -101,16 +101,13 @@ class HashMap:
         i = 0
         while i < self._capacity:
             # Compute the index of the next bucket to check
-            next_index = (index + i ** 2) % self._capacity
+            next_index = (index + i**2) % self._capacity
 
             # Get the entry at the current bucket
             entry = self._buckets[next_index]
 
             if entry is None or entry.is_tombstone:
                 # If the current bucket is empty or has a deleted entry, insert the new entry
-                if key == "" or value == []:
-                    return
-
                 self._buckets[next_index] = HashEntry(key, value)
                 self._size += 1
                 return
@@ -118,6 +115,7 @@ class HashMap:
                 # If the current bucket has an entry with the same key, update its value
                 entry.value = value
                 return
+
             i += 1
 
         # If we have iterated over all the buckets without finding an empty slot,
@@ -128,7 +126,7 @@ class HashMap:
         index = self._hash_function(key) % self._capacity
         i = 0
         while i < self._capacity:
-            next_index = (index + i ** 2) % self._capacity
+            next_index = (index + i**2) % self._capacity
             entry = self._buckets[next_index]
             if entry is None or entry.is_tombstone:
                 self._buckets[next_index] = HashEntry(key, value)
@@ -199,7 +197,7 @@ class HashMap:
         i = 0
         while i < self._capacity:
             # Compute the index of the next bucket to check
-            next_index = (index + i ** 2) % self._capacity
+            next_index = (index + i**2) % self._capacity
 
             # Get the entry at the current bucket
             entry = self._buckets[next_index]
@@ -216,6 +214,7 @@ class HashMap:
         # If we have iterated over all the buckets without finding the entry with the given key,
         # the key is not in the map
         return None
+
 
     def contains_key(self, key: str) -> bool:
         """
@@ -308,6 +307,7 @@ class HashMap:
 
         self._next_index = None
         raise StopIteration
+
 
 # ------------------- BASIC TESTING ---------------------------------------- #
 
