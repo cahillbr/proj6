@@ -1,4 +1,3 @@
-
 # Name:
 # OSU Email:
 # Course: CS261 - Data Structures
@@ -6,18 +5,15 @@
 # Due Date:
 # Description:
 
-
-from a6_include import (DynamicArray, LinkedList,
+from a6_include import (DynamicArray, DynamicArrayException, HashEntry,
                         hash_function_1, hash_function_2)
 
 
 class HashMap:
-    def __init__(self,
-                 capacity: int = 11,
-                 function: callable = hash_function_1) -> None:
+    def __init__(self, capacity: int, function) -> None:
         """
         Initialize new HashMap that uses
-        separate chaining for collision resolution
+        quadratic probing for collision resolution
         DO NOT CHANGE THIS METHOD IN ANY WAY
         """
         self._buckets = DynamicArray()
@@ -25,7 +21,7 @@ class HashMap:
         # capacity must be a prime number
         self._capacity = self._next_prime(capacity)
         for _ in range(self._capacity):
-            self._buckets.append(LinkedList())
+            self._buckets.append(None)
 
         self._hash_function = function
         self._size = 0
@@ -42,7 +38,7 @@ class HashMap:
 
     def _next_prime(self, capacity: int) -> int:
         """
-        Increment from given number and the find the closest prime number
+        Increment from given number to find the closest prime number
         DO NOT CHANGE THIS METHOD IN ANY WAY
         """
         if capacity % 2 == 0:
@@ -91,30 +87,54 @@ class HashMap:
 
     def put(self, key: str, value: object) -> None:
         """
-        Adds a key-value pair to the hash map. Resizes the hash map if the load factor is greater than or equal to 1.0.
+        Adds a key-value pair to the hash map. Resizes the hash map if the load factor is greater than or equal to 0.5.
         """
-        if self.table_load() >= 1.0:
-            self.resize_table(2 * self.get_capacity())
+        # Check if the load factor is greater than or equal to 0.5
+        if self.table_load() >= 0.9:
+            # Double the capacity of the hash map
+            self.resize_table(self._capacity * 2)
 
-        index = self._hash_function(key) % self.get_capacity()
+        # Compute the index of the bucket where the entry should be inserted
+        index = self._hash_function(key) % self._capacity
 
-        if self.contains_key(key):
-            node = self._buckets[index].contains(key)
-            node.value = value
-        else:
-            self._buckets[index].insert(key, value)
-            self._size += 1
+        # Iterate over the buckets using quadratic probing to find an empty slot
+        i = 0
+        while i < self._capacity:
+            # Compute the index of the next bucket to check
+            next_index = (index + i ** 2) % self._capacity
 
-    def empty_buckets(self) -> int:
-        """
-        Returns the number of empty buckets in the hash map.
-        """
-        count = 0
-        for i in range(self._buckets.length()):
-            if self._buckets[i].length() == 0:
-                count += 1
+            # Get the entry at the current bucket
+            entry = self._buckets[next_index]
 
-        return count
+            if entry is None or entry.is_tombstone:
+                # If the current bucket is empty or has a deleted entry, insert the new entry
+                if key == "" or value == []:
+                    return
+
+                self._buckets[next_index] = HashEntry(key, value)
+                self._size += 1
+                return
+            elif entry.key == key:
+                # If the current bucket has an entry with the same key, update its value
+                entry.value = value
+                return
+            i += 1
+
+        # If we have iterated over all the buckets without finding an empty slot,
+        # we need to resize the hash map
+        self.resize_table(self._capacity * 2)
+
+        # Insert the new entry
+        index = self._hash_function(key) % self._capacity
+        i = 0
+        while i < self._capacity:
+            next_index = (index + i ** 2) % self._capacity
+            entry = self._buckets[next_index]
+            if entry is None or entry.is_tombstone:
+                self._buckets[next_index] = HashEntry(key, value)
+                self._size += 1
+                return
+            i += 1
 
     def table_load(self) -> float:
         """
@@ -122,51 +142,80 @@ class HashMap:
         """
         return self.get_size() / self.get_capacity()
 
-    def clear(self) -> None:
+    def empty_buckets(self) -> int:
         """
-        Removes all key-value pairs from the hash map.
+        Returns the number of empty buckets in the hash map.
         """
-        for i in range(self._buckets.length()):
-            self._buckets[i] = LinkedList()
-
-        self._size = 0
+        count = 0
+        for i in range(self._capacity):
+            if self._buckets[i] is None or self._buckets[i].is_tombstone:
+                count += 1
+        return count
 
     def resize_table(self, new_capacity: int) -> None:
         """
-        Resizes the HashTable
+        Resize the hash map to the new_capacity
         """
-        if new_capacity < 1:
+        if new_capacity < self.get_size():
             return
-
-        if new_capacity < self._size:
-            new_capacity = 2 * self.get_size()
 
         if not self._is_prime(new_capacity):
             new_capacity = self._next_prime(new_capacity)
 
-        keys_and_values = self.get_keys_and_values()
-        if keys_and_values is None:
-            return
+        new_buckets = DynamicArray()
+        for _ in range(new_capacity):
+            new_buckets.append(None)
 
-        self.clear()
-        for i in range(self._capacity, new_capacity):
-            self._buckets.append(LinkedList())
+        for i in range(self._buckets.length()):
+            entry = self._buckets[i]
+            if entry and not entry.is_tombstone:
+                hash_value = self._hash_function(entry.key) % new_capacity
+                if not new_buckets[hash_value]:
+                    new_buckets[hash_value] = entry
+                else:
+                    # quadratic probing to find new index
+                    j = 1
+                    while True:
+                        new_index = (hash_value + j * j) % new_capacity
+                        if not new_buckets[new_index]:
+                            new_buckets[new_index] = entry
+                            break
+                        j += 1
 
         self._capacity = new_capacity
+        self._buckets = new_buckets
 
-        for i in range(keys_and_values.length()):
-            k, v = keys_and_values[i]
-            index = self._hash_function(k) % self.get_capacity()
-            self._buckets[index].insert(k, v)
-            self._size += 1
+        if self.table_load() >= 0.5:
+            self.resize_table(2 * self._capacity)
 
-    def get(self, key: str):
+    def get(self, key: str) -> object:
         """
-        Returns the value associated with the given key, or None if the key is not in the map.
+        Returns the value associated with the given key in the hash map, or None if the key is not in the hash map.
         """
-        index = self._hash_function(key) % self.get_capacity()
-        node = self._buckets[index].contains(key)
-        return node.value if node else None
+        # Compute the index of the bucket where the entry with the given key should be located
+        index = self._hash_function(key) % self._capacity
+
+        # Iterate over the buckets using quadratic probing to find the entry with the given key
+        i = 0
+        while i < self._capacity:
+            # Compute the index of the next bucket to check
+            next_index = (index + i ** 2) % self._capacity
+
+            # Get the entry at the current bucket
+            entry = self._buckets[next_index]
+
+            if entry is None:
+                # If the current bucket is empty, the key is not in the map
+                return None
+            elif entry.key == key and not entry.is_tombstone:
+                # If the current bucket has an entry with the same key, return its value
+                return entry.value
+
+            i += 1
+
+        # If we have iterated over all the buckets without finding the entry with the given key,
+        # the key is not in the map
+        return None
 
     def contains_key(self, key: str) -> bool:
         """
@@ -178,53 +227,87 @@ class HashMap:
         """
         Removes the key-value pair with the given key from the hash map.
         """
-        if not self.contains_key(key):
-            return
+        # Compute the index of the bucket where the entry should be located
+        index = self._hash_function(key) % self._capacity
 
-        index = self._hash_function(key) % self.get_capacity()
-        self._buckets[index].remove(key)
-        self._size -= 1
+        # Iterate over the buckets using quadratic probing to find the entry with the given key
+        i = 0
+        while i < self._capacity:
+            # Compute the index of the next bucket to check
+            next_index = (index + i ** 2) % self._capacity
+
+            # Get the entry at the current bucket
+            entry = self._buckets[next_index]
+
+            if entry is None:
+                # If the current bucket is empty, the entry is not in the hash map
+                return
+            elif entry.key == key:
+                # If the current bucket has an entry with the same key, remove it
+                entry.is_tombstone = True
+                self._size -= 1
+
+                # Reset the tombstone flags of entries that were moved during probing
+                j = i + 1
+                while True:
+                    next_next_index = (index + j ** 2) % self._capacity
+                    next_entry = self._buckets[next_next_index]
+                    if next_entry is None or j == self._capacity:
+                        break
+                    elif not next_entry.is_tombstone and self._hash_function(next_entry.key) % self._capacity <= i:
+                        next_entry.is_tombstone = True
+                        self._size -= 1
+
+                    j += 1
+
+                return
+
+            i += 1
+
+    def clear(self) -> None:
+        """
+        Removes all key-value pairs from the hash map.
+        """
+        self._buckets = DynamicArray()
+        for _ in range(self._capacity):
+            self._buckets.append(None)
+        self._size = 0
 
     def get_keys_and_values(self) -> DynamicArray:
         """
-        Returns a dynamic array containing all key-value pairs in the hash map.
+        Returns a DynamicArray that contains all key-value pairs stored in the hash map.
         """
         da = DynamicArray()
-        for i in range(self._buckets.length()):
-            lst = self._buckets[i]
-            if lst.length() > 0:
-                for node in lst:
-                    da.append((node.key, node.value))
+        for entry in self:
+            da.append((entry.key, entry.value))
 
         return da
 
+    def __iter__(self):
+        """
+        Returns an iterator object that can iterate over all entries in the hash map.
+        """
+        for i in range(self._buckets.length()):
+            bucket = self._buckets[i]
+            if bucket is not None and not bucket.is_tombstone:
+                yield bucket
 
-def find_mode(da: DynamicArray) -> (DynamicArray, int):
-    """
-    Finds the mode
-    """
-    # if you'd like to use a hash map,
-    # use this instance of your Separate Chaining HashMap
-    map = HashMap()
-    new = da[0]
-    greatest = 1
-    for i in range(da.length()):
-        if map.contains_key(da[i]):
-            map.put(da[i], map.get(da[i]) + 1)
-            if map.get(da[i]) > greatest:
-                new = da[i]
-                greatest = map.get(da[i])
-        else:
-            map.put(da[i], 1)
+    def __next__(self):
+        """
+        Return the next key in the iteration
+        """
+        if self._next_index is None:
+            self._next_index = 0
 
-    output = DynamicArray()
-    data = map.get_keys_and_values()
-    for i in range(data.length()):
-        k, v = data[i]
-        if v == greatest:
-            output.append(k)
+        while self._next_index < self._capacity:
+            bucket = self._buckets[self._next_index]
+            self._next_index += 1
 
-    return output, greatest
+            if bucket is not None and not bucket.is_tombstone:
+                return bucket
+
+        self._next_index = None
+        raise StopIteration
 
 
 # ------------------- BASIC TESTING ---------------------------------------- #
